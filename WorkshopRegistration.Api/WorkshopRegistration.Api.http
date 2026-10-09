@@ -1,0 +1,6 @@
+@WorkshopRegistration.Api_HostAddress = http://localhost:5227
+
+GET {{WorkshopRegistration.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
