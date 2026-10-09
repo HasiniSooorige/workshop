@@ -3,12 +3,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WorkshopRegistration.Api.Data;
+using WorkshopRegistration.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Workshop Registration API",
+        Version = "v1",
+        Description = "API for managing workshops and attendee registrations"
+    });
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
@@ -46,13 +56,43 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint(
+            "/swagger/v1/swagger.json",
+            "Workshop Registration API v1");
+    });
 }
 
 app.UseHttpsRedirection();
 app.UseCors("ReactFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+
+    var db = scope.ServiceProvider
+        .GetRequiredService<AppDbContext>();
+
+    await db.Database.MigrateAsync();
+
+    if (!await db.Users.AnyAsync(u => u.Role == "Admin"))
+    {
+        db.Users.Add(new User
+        {
+            FullName = "System Administrator",
+            Email = "admin@workshop.local",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@12345"),
+            Role = "Admin",
+            IsActive = true
+        });
+
+        await db.SaveChangesAsync();
+    }
+}
 
 app.MapControllers();
 
